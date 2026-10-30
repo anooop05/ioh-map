@@ -16,6 +16,15 @@
 .panel-actions{display:flex;align-items:center;gap:5px}.panel-admin{display:none;align-items:center;gap:6px;border:0;border-radius:8px;background:#f0f5f0;color:#43734e;padding:7px 9px;font-size:10px;font-weight:600}.panel-admin:hover{background:#e6efe7}.panel-admin svg{display:block;flex:none}@media(max-width:700px){.mode-switch{display:none}.panel-admin{display:inline-flex}.brand-row{padding-right:12px}.search-panel{max-height:min(36dvh,360px)}.filter-row,.list-heading{flex:none}.lab-list{flex:1 1 auto;min-height:68px;overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;scrollbar-width:thin;scrollbar-color:#cad3cb transparent}.lab-list::-webkit-scrollbar{width:4px}.lab-list::-webkit-scrollbar-thumb{background:#cad3cb;border-radius:4px}.lab-row{flex:none}.panel-foot{min-height:30px}}@media(max-width:380px){.search-panel{max-height:min(40dvh,330px)}}
 @media(max-width:700px){.map-controls{top:auto;bottom:calc(28px + env(safe-area-inset-bottom));transform:none}.map-controls.with-details{bottom:calc(43dvh + 28px + env(safe-area-inset-bottom))}}@media(max-width:700px) and (max-height:680px){.map-controls.with-details{bottom:calc(39dvh + 24px + env(safe-area-inset-bottom))}}
 .follow-control{position:absolute;z-index:850;right:22px;bottom:24px;width:48px;height:48px;display:grid;place-items:center;border:1px solid #e5e9e5;border-radius:50%;background:#fff;color:#43784f;box-shadow:0 3px 12px #1b2c1c26;transition:background .15s,transform .15s}.follow-control:hover{background:#f1f6f1;transform:scale(1.04)}.follow-control:active{transform:scale(.96)}.follow-control svg{display:block}@media(max-width:700px){.follow-control{right:14px;bottom:calc(28px + env(safe-area-inset-bottom));width:50px;height:50px}}
+.follow-control.uncentered{background:#2f7047;color:#fff;border-color:#2f7047;box-shadow:0 4px 14px #2f704740}
+.follow-control.uncentered:hover{background:#255d3a}
+.recenter-badge{position:absolute;right:56px;background:#2f7047;color:#fff;font-size:11px;font-weight:700;padding:4px 8px;border-radius:6px;white-space:nowrap;box-shadow:0 2px 8px #1b2c1c33;pointer-events:none}
+.compass-control{position:absolute;z-index:850;right:22px;bottom:84px;width:48px;height:48px;display:grid;place-items:center;border:1px solid #e5e9e5;border-radius:50%;background:#fff;color:#26342a;box-shadow:0 3px 12px #1b2c1c26;cursor:pointer;transition:background .15s,transform .15s}.compass-control:hover{background:#f1f6f1;transform:scale(1.04)}.compass-control:active{transform:scale(.96)}
+.compass-needle-wrap{position:relative;width:26px;height:26px;display:flex;align-items:center;justify-content:center;transition:transform .2s ease-out}
+.needle-north{position:absolute;top:2px;left:9.5px;width:0;height:0;border-left:3.5px solid transparent;border-right:3.5px solid transparent;border-bottom:11px solid #e53935}
+.needle-south{position:absolute;bottom:2px;left:9.5px;width:0;height:0;border-left:3.5px solid transparent;border-right:3.5px solid transparent;border-top:11px solid #9aa0a6}
+.compass-badge{position:absolute;top:-2px;right:-2px;font-size:8px;font-weight:800;background:#2b6541;color:#fff;border-radius:5px;padding:1px 3px;line-height:1}
+@media(max-width:700px){.compass-control{right:14px;bottom:calc(84px + env(safe-area-inset-bottom));width:50px;height:50px}}
 
 /* Keep active navigation compact so the live route stays visible. */
 @media(max-width:700px){
@@ -33,5 +42,5 @@
 }
 
 .navigation-position-wrap{background:transparent;border:0}
-.navigation-position{width:34px;height:34px;display:grid;place-items:center;border:2px solid #fff;border-radius:50%;background:#4285f4;box-shadow:0 2px 8px #172b4966}
-.navigation-position-arrow{width:17px;height:21px;background:#fff;clip-path:polygon(50% 0,100% 100%,50% 77%,0 100%);filter:drop-shadow(0 1px 1px #174b9c)}
+.navigation-position{width:36px;height:36px;display:grid;place-items:center;border:2.5px solid #fff;border-radius:50%;background:#4285f4;box-shadow:0 2px 10px #172b4966;position:relative}
+.navigation-position-arrow{width:16px;height:20px;background:#fff;clip-path:polygon(50% 0,100% 100%,50% 77%,0 100%);filter:drop-shadow(0 1px 1px #174b9c);transform-origin:50% 55%;transition:transform .18s cubic-bezier(0.2,0,0.2,1)}
