@@ -24,6 +24,11 @@ export function useGeolocation() {
   useEffect(() => {
     if (typeof window === 'undefined') return
 
+    // Only listen on touch-capable mobile devices to avoid noisy lid accelerometer jitter on laptops/desktops
+    const isTouchDevice = 'ontouchstart' in window || (typeof navigator !== 'undefined' && navigator.maxTouchPoints > 0)
+    if (!isTouchDevice) return
+
+    let lastReportedDeg = 0
     const handleOrientation = (event: DeviceOrientationEvent) => {
       let deg: number | null = null
       // iOS WebKit compass
@@ -35,6 +40,10 @@ export function useGeolocation() {
       }
 
       if (deg !== null && Number.isFinite(deg)) {
+        // Deadband filter: ignore small jitter (< 3.5 degrees)
+        const diff = Math.abs((((deg - lastReportedDeg + 540) % 360) - 180))
+        if (diff < 3.5) return
+        lastReportedDeg = deg
         const rounded = Math.round(deg)
         compassHeadingRef.current = rounded
         setCompassHeading(rounded)

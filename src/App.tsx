@@ -7,7 +7,6 @@ import { useGeolocation } from './hooks/useGeolocation'
 import {
   computeRouteProgress,
   fetchWalkingRoute,
-  smoothAngle,
   type RouteProgress,
   type WalkingRoute,
 } from './utils/navigation'
@@ -321,8 +320,8 @@ function VisitorPage({
   const [locateKey, setLocateKey] = useState(0)
   const [followKey, setFollowKey] = useState(0)
   const [isFollowing, setIsFollowing] = useState(true)
-  const [navMode, setNavMode] = useState<'heading-up' | 'north-up'>('heading-up')
-  const [mapBearing, setMapBearing] = useState(0)
+  const [navMode, setNavMode] = useState<'heading-up' | 'north-up'>('north-up')
+  const compassNeedleRef = useRef<HTMLSpanElement>(null)
 
   const requestSequence = useRef(0)
   const offRouteCounter = useRef(0)
@@ -410,6 +409,7 @@ function VisitorPage({
     setSelected(lab)
     setNavigationActive(true)
     setIsFollowing(true)
+    setNavMode('north-up')
     if (!geolocation.position) geolocation.locate()
     setRouteRequestKey((current) => current + 1)
   }
@@ -483,7 +483,7 @@ function VisitorPage({
           navMode={navMode}
           isFollowing={isFollowing}
           onUserPan={handleUserPan}
-          setMapBearing={setMapBearing}
+          compassNeedleRef={compassNeedleRef}
           followKey={followKey}
         />
         {!navigationActive && <MarkerLayer labs={labs} selected={selected} onSelect={setSelected} />}
@@ -518,7 +518,7 @@ function VisitorPage({
             aria-label={navMode === 'heading-up' ? 'Switch to North-up view' : 'Switch to Heading-up view'}
             title={navMode === 'heading-up' ? 'Switch to North-up view' : 'Switch to Heading-up view'}
           >
-            <span className="compass-needle-wrap" style={{ transform: `rotate(${-mapBearing}deg)` }}>
+            <span ref={compassNeedleRef} className="compass-needle-wrap">
               <i className="needle-north" />
               <i className="needle-south" />
             </span>
@@ -592,7 +592,7 @@ function MapNavigationCamera({
   navMode,
   isFollowing,
   onUserPan,
-  setMapBearing,
+  compassNeedleRef,
   followKey,
 }: {
   active: boolean
@@ -602,13 +602,14 @@ function MapNavigationCamera({
   navMode: 'heading-up' | 'north-up'
   isFollowing: boolean
   onUserPan: () => void
-  setMapBearing: Dispatch<SetStateAction<number>>
+  compassNeedleRef: { current: HTMLSpanElement | null }
   followKey: number
 }) {
   const map = useMap()
   const wasActive = useRef(false)
   const previousFollowKey = useRef(followKey)
-  const currentHeadingRef = useRef(0)
+  const lastHeadingSentRef = useRef<number | null>(null)
+  const lastPositionRef = useRef<[number, number] | null>(null)
 
   // Listen to manual map drag or touch gesture to stop auto-panning
   useEffect(() => {
@@ -616,8 +617,8 @@ function MapNavigationCamera({
       onUserPan()
     }
     const handleRotate = () => {
-      if (typeof map.getBearing === 'function') {
-        setMapBearing(Math.round(map.getBearing()))
+      if (compassNeedleRef.current && typeof map.getBearing === 'function') {
+        compassNeedleRef.current.style.transform = `rotate(${-map.getBearing()}deg)`
       }
     }
     map.on('dragstart', handleDragStart)
@@ -628,7 +629,7 @@ function MapNavigationCamera({
       map.off('rotatestart', handleDragStart)
       map.off('rotate', handleRotate)
     }
-  }, [map, onUserPan, setMapBearing])
+  }, [map, onUserPan, compassNeedleRef])
 
   // Handle deactivation
   useEffect(() => {
@@ -636,13 +637,15 @@ function MapNavigationCamera({
       if (wasActive.current) {
         if (typeof map.stopHeadingUp === 'function') map.stopHeadingUp()
         if (typeof map.setBearing === 'function') map.setBearing(0)
-        setMapBearing(0)
+        if (compassNeedleRef.current) compassNeedleRef.current.style.transform = 'rotate(0deg)'
         wasActive.current = false
+        lastHeadingSentRef.current = null
+        lastPositionRef.current = null
       }
       return
     }
     wasActive.current = true
-  }, [active, map, setMapBearing])
+  }, [active, map, compassNeedleRef])
 
   // Camera positioning and orientation
   useEffect(() => {
@@ -655,45 +658,49 @@ function MapNavigationCamera({
       map.stop()
       map.flyTo(position, 17.5, { duration: 0.5 })
       wasActive.current = true
+      lastPositionRef.current = position
       return
     }
 
-    if (!isFollowing) return
-
     if (navMode === 'heading-up') {
       const targetHeading = heading ?? routeBearing ?? 0
-      const smoothed = smoothAngle(currentHeadingRef.current, targetHeading, 0.22)
-      currentHeadingRef.current = smoothed
+      const currentSent = lastHeadingSentRef.current
+      const headingDiff = currentSent === null
+        ? 360
+        : Math.abs((((targetHeading - currentSent + 540) % 360) - 180))
 
-      if (typeof map.setHeading === 'function') {
-        map.setHeading(smoothed, { ease: 0.16, deadzone: 2 })
+      if (headingDiff >= 4) {
+        lastHeadingSentRef.current = targetHeading
+        if (typeof map.setHeading === 'function') {
+          map.setHeading(targetHeading, { ease: 0.15, deadzone: 2 })
+        }
       }
 
-      // Smoothly offset pointer towards bottom without competing pan animations
-      const size = map.getSize()
-      const currentPoint = map.latLngToContainerPoint(position)
-      const targetPoint = L.point(size.x / 2, size.y * 0.70)
-      const diff = currentPoint.subtract(targetPoint)
-      if (diff.distanceTo(L.point(0, 0)) > 6) {
-        map.panBy(diff, { animate: false })
+      if (isFollowing) {
+        const lastPos = lastPositionRef.current
+        if (!lastPos || lastPos[0] !== position[0] || lastPos[1] !== position[1]) {
+          lastPositionRef.current = position
+          map.panTo(position, { animate: false })
+        }
       }
     } else {
-      // North-up mode
+      // North-up mode: lock bearing to 0
       if (typeof map.stopHeadingUp === 'function') map.stopHeadingUp()
       if (typeof map.setBearing === 'function' && map.getBearing() !== 0) {
         map.setBearing(0)
-        setMapBearing(0)
+        if (compassNeedleRef.current) compassNeedleRef.current.style.transform = 'rotate(0deg)'
       }
+      lastHeadingSentRef.current = 0
 
-      const size = map.getSize()
-      const currentPoint = map.latLngToContainerPoint(position)
-      const targetPoint = L.point(size.x / 2, size.y * 0.60)
-      const diff = currentPoint.subtract(targetPoint)
-      if (diff.distanceTo(L.point(0, 0)) > 6) {
-        map.panBy(diff, { animate: false })
+      if (isFollowing) {
+        const lastPos = lastPositionRef.current
+        if (!lastPos || lastPos[0] !== position[0] || lastPos[1] !== position[1]) {
+          lastPositionRef.current = position
+          map.panTo(position, { animate: true, duration: 0.25 })
+        }
       }
     }
-  }, [active, position, heading, routeBearing, navMode, isFollowing, followKey, map, setMapBearing])
+  }, [active, position, heading, routeBearing, navMode, isFollowing, followKey, map, compassNeedleRef])
 
   return null
 }
